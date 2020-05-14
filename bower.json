@@ -1,0 +1,21 @@
+{
+  "name": "cryptoprice-dash",
+  "description": "Criptoprice dashboard",
+  "main": "index.js",
+  "authors": [
+    "Felipe Granados <felipe.granados@bbvaitspain.com>"
+  ],
+  "license": "ISC",
+  "homepage": "",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^2.0.0"
+  }
+}
