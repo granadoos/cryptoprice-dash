@@ -1,11 +1,25 @@
 <link rel="import" href="bower_components/polymer/polymer-element.html">
 <link rel="import" href="bower_components/iron-ajax/iron-ajax.html">
 <link rel="import" href="bower_components/polymer/lib/utils/render-status.html">
+<link rel="import" href="bower_components/paper-spinner/paper-spinner-lite.html">
+<link rel="import" href="bower_components/paper-button/paper-button.html">
+
+<script src="bower_components/chart.js/dist/Chart.js"></script>
+<script src="bower_components/moment/moment.js"></script>
 
 <dom-module id="cryptoprice-dash">
 	<template>
 		<h2>Hello</h2>
-		<iron-ajax id='coinbase' handle-as="json" on-response="_handleResponse"></iron-ajax>
+		<iron-ajax id='coinbase' handle-as="json" loading="{{loading}}" on-response="_handleResponse"></iron-ajax>
+		<paper-spinner-lite active=[[loading]]></paper-spinner-lite>
+		<div hidden$="[[loading]]">
+			<template is="dom-repeat" items="[[currencies]]">
+				<paper-button noink on-click="_selectGraph">[[item.name]] - [[item.price]]€</paper-button>
+			</template>
+			<div hidden$="[[loading]]" style="width: 100%; max-width:700px; margin: 0 auto;">
+				<canvas height="2" width="4" id="canvas"></canvas>
+			</div>
+		</div>
 	</template>
 	<script>
 		class CryptopriceDash extends Polymer.Element {
@@ -16,22 +30,39 @@
 						type: Array,
 						value: [{
 							code:'5b71fc48-3dd3-540c-809b-f8c94d0e68b5',
-							name: 'Bitcoin'
+							name: 'Bitcoin',
+							price: 0,
+							prices: [],
+							times: []
 						},{
 							code:'d85dce9b-5b73-5c3c-8978-522ce1d1c1b4',
-							name: 'Ethereum'
+							name: 'Ethereum',
+							price: 0,
+							prices: [],
+							times: []
+
 						}, {
 							code: 'c9c24c6e-c045-5fde-98a2-00ea7f520437',
-							name: 'Litecoin'
+							name: 'Litecoin',
+							price: 0,
+							prices: [],
+							times: []
+
 						}]
-					}
+					},
+					loading: {
+						type: Boolean,
+						notify: true,
+						value: false
+					},
+					myLineChar: {}
 				}
 			}
 
 			ready(){
 				super.ready();
 				Polymer.RenderStatus.afterNextRender(this, function() {
-				 	this._getCurrencyData();
+					this._getCurrencyData();
 				})
 			}
 
@@ -39,27 +70,87 @@
 				var ajax= this.$.coinbase
 
 				this.currencies.forEach((element) => {
-					ajax.url =  'https://www.coinbase.com/api/v2/assets/prices/' + element.code + '?base=EUR';
+					ajax.url = 'https://www.coinbase.com/api/v2/assets/prices/' + element.code + '?base=EUR';
 					ajax.generateRequest();
 				});
 			}
 
 			_handleResponse(response){
-				console.log(response);
+				this._computeCurrencyData(response.detail.__data.response.data);
+				this._computeGraph(this.currencies[0].code);
+			}
+
+			_computeCurrencyData(data){
+				var index = this.currencies.findIndex((currency) =>  currency.code === data.base_id );
+				var prices = [];
+				var times =[]; 
+
+				this.set(`currencies.${index}.price`,data.prices.latest);
+
+				data.prices.week.prices.forEach((element) => {
+					prices.push(element[0]);
+					times.push(this._computeDataTime(element[1]));
+				});
+
+				this.set(`currencies.${index}.times`, times.reverse());
+				this.set(`currencies.${index}.prices`, prices.reverse());
+
+			}
+			_selectGraph(e){
+				this._computeGraph(e.model.item.code)
+			}
+
+			_computeGraph(code) {
+				var currency = this.currencies.find((currency) => currency.code === code);
+				
+				this._generateLineChart(currency.times, currency.prices, currency.name);
+			}
+
+			_computeDataTime(data){
+				return moment(data*1000).format('DD/MM/YY h:mm a')
+			}
+
+			_generateLineChart(times, prices, labelName){
+				if (this.myLineChar !== null ) {
+					this.set('myLineChar', null);
+				}
+				
+				var ctx = this.$.canvas.getContext('2d');
+				this.myLineChar = new Chart(ctx, {
+					type: 'line',
+					data: {
+						labels: times,
+						datasets: [{
+							label: labelName,
+							pointRadius: 0,
+							data: prices,
+							backgroundColor: 'rgba(111, 124, 186, 0.1)',
+							borderColor: 'rgba(111, 124, 186, 1)',
+							borderWidth: 2
+						}]
+					},
+					options: {
+						animation: false,
+						tooltips: {
+							mode: 'index',
+							intersect: false
+						},
+						scales: {
+							xAxes: [{
+								gridLines: {
+									display: false
+								}
+							}],
+							yAxes: [{
+								gridLines: {
+									display: false
+								}
+							}]
+						}
+					}
+				});
 			}
 		}
 		window.customElements.define(CryptopriceDash.is, CryptopriceDash);
 	</script>
-
 </dom-module>
-
-<!--
-	GET
-// https://www.coinbase.com/api/v2/assets/info?&locale=es&country=ES&filter=listed
-
-
-
-https://www.coinbase.com/api/v2/assets/prices/d85dce9b-5b73-5c3c-8978-522ce1d1c1b4?base=EUR
-
-
--->
