@@ -9,7 +9,6 @@
 
 <dom-module id="cryptoprice-dash">
 	<template>
-		<h2>Hello</h2>
 		<iron-ajax id='coinbase' handle-as="json" loading="{{loading}}" on-response="_handleResponse"></iron-ajax>
 		<paper-spinner-lite active=[[loading]]></paper-spinner-lite>
 		<div hidden$="[[loading]]">
